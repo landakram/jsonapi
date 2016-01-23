@@ -184,10 +184,12 @@ public function add_relation($key, $relation, $skip_include=false) {
 			$this->add_included_resource($relation);
 		}
 		
+		$main_self_link = (is_string($this->links['self'])) ? $this->links['self'] : $this->links['self']['href'];
+		
 		$relation = array(
 			'links' => array(
-				'self'    => $this->links['self'].'/relationships/'.$key,
-				'related' => $this->links['self'].'/'.$key,
+				'self'    => $main_self_link.'/relationships/'.$key,
+				'related' => $main_self_link.'/'.$key,
 			),
 			'data'  => array(
 				'type' => $relation_array['data']['type'],
@@ -227,15 +229,32 @@ public function fill_relations($relations, $skip_include=false) {
  * useful for links which can not be added as relation, @see ->add_relation()
  * 
  * @param  string $key
- * @param  mixed  $link objects are converted in arrays, @see base::convert_object_to_array()
+ * @param  mixed  $link      string with link, or raw link object array/object
+ *                           objects are converted in arrays, @see base::convert_object_to_array()
+ * @param  mixed  $meta_data optional, meta data as key-value pairs
+ *                           should not be used if $link is non-string
+ *                           objects are converted in arrays, @see base::convert_object_to_array()
  * @return void
  */
-public function add_link($key, $link) {
+public function add_link($key, $link, $meta_data=null) {
 	if (is_object($link)) {
 		$link = parent::convert_object_to_array($link);
 	}
-	if (is_string($link) == false && is_array($link) == false) {
-		throw new \Exception('link should be a string or an array');
+	
+	if ($meta_data) {
+		// can not combine both raw link object and extra meta data
+		if (is_string($link) == false) {
+			throw new \Exception('link "'.$key.'" should be a string if meta data is provided separate');
+		}
+		
+		if (is_object($meta_data)) {
+			$meta_data = parent::convert_object_to_array($meta_data);
+		}
+		
+		$link = array(
+			'href' => $link,
+			'meta' => $meta_data,
+		);
 	}
 	
 	$this->primary_links[$key] = $link;
@@ -268,12 +287,33 @@ public function fill_links($links) {
  * @see jsonapi\response::__construct()
  * 
  * @param  string $link
+ * @param  mixed  $meta_data optional, meta data as key-value pairs
+ *                           objects are converted in arrays, @see base::convert_object_to_array()
  * @return void
  */
-public function set_self_link($link) {
-	parent::set_self_link($link);
+public function set_self_link($link, $meta_data=null) {
+	parent::set_self_link($link, $meta_data);
 	
-	$this->add_link($key='self', $link);
+	$this->add_link($key='self', $link, $meta_data);
+}
+
+/**
+ * adds meta data to the default self link
+ * this will end up in response.links.self.meta.{$key} and response.data.links.self.meta.{$key}
+ * this overrides the jsonapi\response->add_self_link_meta() which only adds it to response.links.self.meta.{$key}
+ * 
+ * @see jsonapi\response->add_self_link_meta()
+ * 
+ * @note you can also use ->set_self_link() with the whole meta object at once
+ * 
+ * @param  string  $key
+ * @param  mixed   $meta_data objects are converted in arrays, @see base::convert_object_to_array()
+ * @return void
+ */
+public function add_self_link_meta($key, $meta_data) {
+	parent::add_self_link_meta($key, $meta_data);
+	
+	$this->primary_links['self'] = $this->links['self'];
 }
 
 /**

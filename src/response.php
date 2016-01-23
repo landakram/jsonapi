@@ -207,10 +207,49 @@ public function get_included_resources() {
  * @see ::__construct()
  * 
  * @param  string $link
+ * @param  mixed  $meta_data optional, meta data as key-value pairs
+ *                           objects are converted in arrays, @see base::convert_object_to_array()
  * @return void
  */
-public function set_self_link($link) {
+public function set_self_link($link, $meta_data=null) {
+	if ($meta_data) {
+		if (is_object($meta_data)) {
+			$meta_data = parent::convert_object_to_array($meta_data);
+		}
+		
+		$link = array(
+			'href' => $link,
+			'meta' => $meta_data,
+		);
+	}
+	
 	$this->links['self'] = $link;
+}
+
+/**
+ * adds meta data to the default self link
+ * this will end up in response.links.self.meta.{$key}
+ * 
+ * @note you can also use ->set_self_link() with the whole meta object at once
+ * 
+ * @param  string  $key
+ * @param  mixed   $meta_data objects are converted in arrays, @see base::convert_object_to_array()
+ * @return void
+ */
+public function add_self_link_meta($key, $meta_data) {
+	if (is_object($meta_data)) {
+		$meta_data = self::convert_to_array($meta_data);
+	}
+	
+	// converts string-type link
+	if (is_string($this->links['self'])) {
+		$this->links['self'] = array(
+			'href' => $this->links['self'],
+			'meta' => array(),
+		);
+	}
+	
+	$this->links['self']['meta'][$key] = $meta_data;
 }
 
 /**
